@@ -27,14 +27,16 @@ pub fn run() {
 
             let _ = app.autolaunch().enable();
 
-            app.global_shortcut().on_shortcut("super+alt+d", move |app, _shortcut, event| {
+            if let Err(e) = app.global_shortcut().on_shortcut("super+alt+k", move |app, _shortcut, event| {
                 if event.state == ShortcutState::Pressed {
                     if let Some(window) = app.get_webview_window("main") {
                         let _ = window.show();
                         let _ = window.set_focus();
                     }
                 }
-            })?;
+            }) {
+                eprintln!("Failed to register global shortcut: {e}");
+            }
 
             Ok(())
         })

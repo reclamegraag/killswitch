@@ -11,7 +11,7 @@ A lightweight Windows process killer with a frosted glass UI. One-click kill, se
 - Search processes by name
 - Sort by name, CPU or memory usage
 - Frosted glass (glassmorphism) UI with custom titlebar
-- Global shortcut: **Win + Alt + D** to activate the window from anywhere
+- Global shortcut: **Win + Alt + K** to activate the window from anywhere
 - Auto-starts with Windows
 
 ## Getting Started
@@ -90,7 +90,7 @@ killswitch/
 
 | Shortcut        | Action                        |
 | --------------- | ----------------------------- |
-| Win + Alt + D   | Show and focus KillSwitch     |
+| Win + Alt + K   | Show and focus KillSwitch     |
 
 ## License
 

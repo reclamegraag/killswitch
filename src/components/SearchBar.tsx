@@ -13,14 +13,14 @@ export default function SearchBar({ onSearch }: Props) {
   }, [value, onSearch]);
 
   return (
-    <div className="relative px-4 mb-3">
-      <i className="fa-solid fa-magnifying-glass absolute left-7 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+    <div className="relative mb-2">
+      <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" style={{ fontSize: 11 }} />
       <input
         type="text"
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder="Search processes..."
-        className="w-full pl-9 pr-3 py-2 rounded-lg bg-white/40 border border-white/30 text-sm text-gray-800 placeholder-gray-400 outline-none focus:ring-2 focus:ring-blue-300/50 transition"
+        className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-black/[0.04] border border-black/[0.06] text-[12px] text-gray-700 placeholder-gray-400 outline-none focus:bg-black/[0.06] focus:border-blue-400/40 transition"
       />
     </div>
   );
