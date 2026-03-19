@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
-use base64::Engine;
 use sysinfo::{Pid, System};
 use tauri::State;
 
@@ -93,13 +92,19 @@ fn extract_icon_cached(
 
 #[cfg(windows)]
 fn extract_icon(exe_path: &PathBuf) -> Option<String> {
+    use std::ffi::c_void;
+    use std::slice;
+
+    use base64::Engine;
     use windows::core::PCWSTR;
     use windows::Win32::Graphics::Gdi::{
-        DeleteObject, GetDIBits, CreateCompatibleDC, DeleteDC,
-        BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS,
+        CreateCompatibleDC, CreateDIBSection, DeleteDC, DeleteObject, SelectObject, BI_RGB,
+        BITMAPINFO, BITMAPINFOHEADER, DIB_RGB_COLORS, HGDIOBJ,
     };
     use windows::Win32::UI::Shell::ExtractIconExW;
-    use windows::Win32::UI::WindowsAndMessaging::{DestroyIcon, GetIconInfo, ICONINFO};
+    use windows::Win32::UI::WindowsAndMessaging::{
+        DestroyIcon, DrawIconEx, GetSystemMetrics, DI_NORMAL, SM_CXICON, SM_CYICON,
+    };
 
     let wide_path: Vec<u16> = exe_path
         .to_string_lossy()
@@ -122,17 +127,17 @@ fn extract_icon(exe_path: &PathBuf) -> Option<String> {
         }
 
         let icon = large_icon[0];
-        let mut icon_info = ICONINFO::default();
-        if GetIconInfo(icon, &mut icon_info).is_err() {
+        let size = GetSystemMetrics(SM_CXICON)
+            .max(GetSystemMetrics(SM_CYICON))
+            .max(32);
+
+        let hdc = CreateCompatibleDC(None);
+        if hdc.0.is_null() {
             DestroyIcon(icon).ok();
             return None;
         }
 
-        let hbm_color = icon_info.hbmColor;
-        let size = 32i32;
-
-        let hdc = CreateCompatibleDC(None);
-        let mut bmi = BITMAPINFO {
+        let bmi = BITMAPINFO {
             bmiHeader: BITMAPINFOHEADER {
                 biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
                 biWidth: size,
@@ -145,28 +150,42 @@ fn extract_icon(exe_path: &PathBuf) -> Option<String> {
             ..Default::default()
         };
 
-        let mut pixels = vec![0u8; (size * size * 4) as usize];
-        let result = GetDIBits(
-            hdc,
-            hbm_color,
-            0,
-            size as u32,
-            Some(pixels.as_mut_ptr() as *mut _),
-            &mut bmi,
-            DIB_RGB_COLORS,
-        );
+        let mut pixels_ptr: *mut c_void = std::ptr::null_mut();
+        let dib = match CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, &mut pixels_ptr, None, 0) {
+            Ok(dib) => dib,
+            Err(_) => {
+                let _ = DeleteDC(hdc);
+                DestroyIcon(icon).ok();
+                return None;
+            }
+        };
 
-        // Cleanup GDI
-        DeleteDC(hdc);
-        if !icon_info.hbmColor.is_invalid() {
-            DeleteObject(icon_info.hbmColor);
+        if dib.is_invalid() || pixels_ptr.is_null() {
+            let _ = DeleteDC(hdc);
+            DestroyIcon(icon).ok();
+            return None;
         }
-        if !icon_info.hbmMask.is_invalid() {
-            DeleteObject(icon_info.hbmMask);
+
+        let previous = SelectObject(hdc, HGDIOBJ(dib.0));
+        if previous.0.is_null() {
+            let _ = DeleteObject(dib);
+            let _ = DeleteDC(hdc);
+            DestroyIcon(icon).ok();
+            return None;
         }
+
+        // Draw onto a transparent canvas so Windows resolves masks and alpha correctly.
+        std::ptr::write_bytes(pixels_ptr, 0, (size * size * 4) as usize);
+        let draw_result = DrawIconEx(hdc, 0, 0, icon, size, size, 0, None, DI_NORMAL);
+        let mut pixels =
+            slice::from_raw_parts(pixels_ptr as *const u8, (size * size * 4) as usize).to_vec();
+
+        let _ = SelectObject(hdc, previous);
+        let _ = DeleteObject(dib);
+        let _ = DeleteDC(hdc);
         DestroyIcon(icon).ok();
 
-        if result == 0 {
+        if draw_result.is_err() {
             return None;
         }
 

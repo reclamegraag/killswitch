@@ -7,7 +7,7 @@ interface Props {
   killingNames: Set<string>;
   onKill: (name: string) => void;
   selectedIndex: number;
-  listRef: RefObject<HTMLDivElement | null>;
+  listRef: RefObject<HTMLDivElement>;
 }
 
 export default function ProcessList({ processes, killingNames, onKill, selectedIndex, listRef }: Props) {
