@@ -11,6 +11,7 @@ A lightweight Windows process killer with a frosted glass UI. One-click kill, se
 - Search processes by name
 - Sort by name, CPU or memory usage
 - Frosted glass (glassmorphism) UI with custom titlebar
+- Global shortcut: **Win + Alt + D** to activate the window from anywhere
 - Auto-starts with Windows
 
 ## Getting Started
@@ -83,7 +84,13 @@ killswitch/
 | Frontend | React 18, TypeScript, Vite, Tailwind CSS v4 |
 | Icons    | Font Awesome                              |
 | Font     | Plus Jakarta Sans                         |
-| Plugin   | tauri-plugin-autostart                    |
+| Plugins  | tauri-plugin-autostart, tauri-plugin-global-shortcut |
+
+## Keyboard Shortcuts
+
+| Shortcut        | Action                        |
+| --------------- | ----------------------------- |
+| Win + Alt + D   | Show and focus KillSwitch     |
 
 ## License
 

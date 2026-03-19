@@ -19,9 +19,23 @@ pub fn run() {
             system: Mutex::new(System::new()),
             icon_cache: Mutex::new(HashMap::new()),
         })
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
+            use tauri::Manager;
             use tauri_plugin_autostart::ManagerExt;
+            use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
+
             let _ = app.autolaunch().enable();
+
+            app.global_shortcut().on_shortcut("super+alt+d", move |app, _shortcut, event| {
+                if event.state == ShortcutState::Pressed {
+                    if let Some(window) = app.get_webview_window("main") {
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                    }
+                }
+            })?;
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
