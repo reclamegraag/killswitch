@@ -12,15 +12,15 @@ export default function ProcessRow({ process, killing, onKill }: Props) {
       className={`flex items-center gap-2.5 px-3 py-[7px] hover:bg-black/[0.03] transition-all group ${killing ? "killing" : ""}`}
     >
       {/* Icon */}
-      <div className="w-5 h-5 flex-shrink-0 flex items-center justify-center">
+      <div className="w-7 h-7 flex-shrink-0 flex items-center justify-center">
         {process.icon_base64 ? (
           <img
             src={`data:image/png;base64,${process.icon_base64}`}
             alt=""
-            className="w-4 h-4 object-contain"
+            className="w-6 h-6 object-contain"
           />
         ) : (
-          <i className="fa-regular fa-window-maximize text-gray-300" style={{ fontSize: 12 }} />
+          <i className="fa-regular fa-window-maximize text-gray-300" style={{ fontSize: 14 }} />
         )}
       </div>
 
@@ -31,7 +31,7 @@ export default function ProcessRow({ process, killing, onKill }: Props) {
             {process.name}
           </span>
           {process.count > 1 && (
-            <span className="text-[9px] font-semibold bg-gray-200 text-gray-500 rounded px-1 py-[1px] leading-none flex-shrink-0">
+            <span className="text-[9px] font-semibold bg-gray-200 text-gray-500 rounded px-1.5 py-[2px] leading-none flex-shrink-0">
               {process.count}
             </span>
           )}
