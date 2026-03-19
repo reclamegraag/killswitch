@@ -1,0 +1,28 @@
+{
+  "productName": "KillSwitch",
+  "version": "0.1.0",
+  "identifier": "com.killswitch.app",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [
+      {
+        "title": "KillSwitch",
+        "width": 400,
+        "height": 500,
+        "center": true,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  }
+}

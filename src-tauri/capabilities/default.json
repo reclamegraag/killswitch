@@ -1,0 +1,12 @@
+{
+  "identifier": "default",
+  "description": "Default capabilities for KillSwitch",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "opener:default",
+    "autostart:allow-enable",
+    "autostart:allow-disable",
+    "autostart:allow-is-enabled"
+  ]
+}
