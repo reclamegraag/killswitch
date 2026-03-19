@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import SearchBar from "./components/SearchBar";
 import SortControls from "./components/SortControls";
@@ -9,6 +9,9 @@ import { useSort } from "./hooks/useSort";
 export default function App() {
   const { processes, killingNames, killByName } = useProcesses();
   const [search, setSearch] = useState("");
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const filtered = processes.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase())
@@ -16,7 +19,72 @@ export default function App() {
 
   const { sorted, field, direction, toggle } = useSort(filtered);
 
-  const handleSearch = useCallback((q: string) => setSearch(q), []);
+  const handleSearch = useCallback((q: string) => {
+    setSearch(q);
+    setSelectedIndex(0);
+  }, []);
+
+  // Keep selectedIndex in bounds
+  useEffect(() => {
+    if (selectedIndex >= sorted.length) {
+      setSelectedIndex(Math.max(0, sorted.length - 1));
+    }
+  }, [sorted.length, selectedIndex]);
+
+  // Global keyboard handler
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Escape closes the app
+      if (e.key === "Escape") {
+        if (search) {
+          setSearch("");
+          searchRef.current?.focus();
+        } else {
+          getCurrentWindow().destroy();
+        }
+        return;
+      }
+
+      // Arrow navigation
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedIndex((i) => Math.min(i + 1, sorted.length - 1));
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedIndex((i) => Math.max(i - 1, 0));
+        return;
+      }
+
+      // Kill selected process
+      if (e.key === "Enter" || e.key === "Delete") {
+        if (sorted[selectedIndex]) {
+          e.preventDefault();
+          killByName(sorted[selectedIndex].name);
+        }
+        return;
+      }
+
+      // Sort shortcuts
+      if (e.ctrlKey && e.key === "1") { e.preventDefault(); toggle("name"); return; }
+      if (e.ctrlKey && e.key === "2") { e.preventDefault(); toggle("cpu"); return; }
+      if (e.ctrlKey && e.key === "3") { e.preventDefault(); toggle("memory"); return; }
+
+      // Any printable character focuses search
+      if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        searchRef.current?.focus();
+      }
+    };
+
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [sorted, selectedIndex, search, killByName, toggle]);
+
+  // Auto-focus search on mount
+  useEffect(() => {
+    searchRef.current?.focus();
+  }, []);
 
   return (
     <div className="h-full p-2">
@@ -39,6 +107,7 @@ export default function App() {
           <button
             onClick={() => getCurrentWindow().destroy()}
             className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-500/15 text-gray-400 hover:text-red-500 transition cursor-pointer"
+            tabIndex={-1}
           >
             <i className="fa-solid fa-xmark" style={{ fontSize: 11 }} />
           </button>
@@ -46,7 +115,7 @@ export default function App() {
 
         {/* Search */}
         <div className="px-5 flex-shrink-0">
-          <SearchBar onSearch={handleSearch} />
+          <SearchBar onSearch={handleSearch} ref={searchRef} />
         </div>
 
         {/* Sort */}
@@ -58,11 +127,17 @@ export default function App() {
         <div className="mx-5 border-t border-black/5 flex-shrink-0" />
 
         {/* Process list */}
-        <ProcessList processes={sorted} killingNames={killingNames} onKill={killByName} />
+        <ProcessList
+          processes={sorted}
+          killingNames={killingNames}
+          onKill={killByName}
+          selectedIndex={selectedIndex}
+          listRef={listRef}
+        />
 
         {/* Footer */}
         <div className="px-4 py-1.5 text-[10px] text-gray-400 text-center flex-shrink-0 border-t border-black/5">
-          {filtered.length} of {processes.length} processes
+          {filtered.length} of {processes.length} processes · <span className="text-gray-300">↑↓ navigate · Enter kill · Esc close</span>
         </div>
       </div>
     </div>

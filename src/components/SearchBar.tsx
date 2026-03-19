@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, forwardRef } from "react";
 
 interface Props {
   onSearch: (query: string) => void;
 }
 
-export default function SearchBar({ onSearch }: Props) {
+const SearchBar = forwardRef<HTMLInputElement, Props>(({ onSearch }, ref) => {
   const [value, setValue] = useState("");
 
   useEffect(() => {
@@ -19,6 +19,7 @@ export default function SearchBar({ onSearch }: Props) {
         style={{ fontSize: 11 }}
       />
       <input
+        ref={ref}
         type="text"
         value={value}
         onChange={(e) => setValue(e.target.value)}
@@ -27,4 +28,7 @@ export default function SearchBar({ onSearch }: Props) {
       />
     </div>
   );
-}
+});
+
+SearchBar.displayName = "SearchBar";
+export default SearchBar;

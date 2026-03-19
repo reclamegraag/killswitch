@@ -4,12 +4,15 @@ interface Props {
   process: GroupedProcess;
   killing: boolean;
   onKill: (name: string) => void;
+  selected: boolean;
 }
 
-export default function ProcessRow({ process, killing, onKill }: Props) {
+export default function ProcessRow({ process, killing, onKill, selected }: Props) {
   return (
     <div
-      className={`flex items-center gap-3 px-5 py-2 hover:bg-black/[0.03] transition-all group ${killing ? "killing" : ""}`}
+      className={`flex items-center gap-3 px-5 py-2 transition-all group ${
+        killing ? "killing" : ""
+      } ${selected ? "bg-blue-500/10" : "hover:bg-black/[0.03]"}`}
     >
       {/* Icon */}
       <div className="w-7 h-7 flex-shrink-0 flex items-center justify-center">
@@ -44,8 +47,11 @@ export default function ProcessRow({ process, killing, onKill }: Props) {
       {/* Kill button */}
       <button
         onClick={() => onKill(process.name)}
-        className="opacity-0 group-hover:opacity-100 w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-md bg-red-500/80 hover:bg-red-600 text-white transition-all cursor-pointer"
+        className={`w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-md bg-red-500/80 hover:bg-red-600 text-white transition-all cursor-pointer ${
+          selected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+        }`}
         title={process.count > 1 ? `Kill all ${process.count} instances` : "Kill process"}
+        tabIndex={-1}
       >
         <i className="fa-solid fa-power-off" style={{ fontSize: 10 }} />
       </button>
