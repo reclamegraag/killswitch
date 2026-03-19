@@ -10,7 +10,7 @@ interface Props {
 export default function ProcessRow({ process, killing, onKill, selected }: Props) {
   return (
     <div
-      className={`flex items-center gap-3 px-5 py-2 transition-all group ${
+      className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all group ${
         killing ? "killing" : ""
       } ${selected ? "bg-blue-500/10" : "hover:bg-black/[0.03]"}`}
     >

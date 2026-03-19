@@ -66,6 +66,13 @@ export default function App() {
         return;
       }
 
+      // Focus search
+      if ((e.ctrlKey && e.key === "f") || e.key === "F3") {
+        e.preventDefault();
+        searchRef.current?.focus();
+        return;
+      }
+
       // Sort shortcuts
       if (e.ctrlKey && e.key === "1") { e.preventDefault(); toggle("name"); return; }
       if (e.ctrlKey && e.key === "2") { e.preventDefault(); toggle("cpu"); return; }
@@ -126,7 +133,7 @@ export default function App() {
         {/* Divider */}
         <div className="mx-5 border-t border-black/5 flex-shrink-0" />
 
-        {/* Process list */}
+        {/* Process list — px-2 offsets content from rounded container edge */}
         <ProcessList
           processes={sorted}
           killingNames={killingNames}
