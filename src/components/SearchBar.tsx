@@ -1,11 +1,20 @@
-import { useState, useEffect, forwardRef } from "react";
+import { useState, useEffect, useImperativeHandle, useRef, forwardRef } from "react";
 
 interface Props {
   onSearch: (query: string) => void;
 }
 
-const SearchBar = forwardRef<HTMLInputElement, Props>(({ onSearch }, ref) => {
+export interface SearchBarHandle {
+  focus: () => void;
+}
+
+const SearchBar = forwardRef<SearchBarHandle, Props>(function SearchBar({ onSearch }, ref) {
   const [value, setValue] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    focus: () => inputRef.current?.focus(),
+  }));
 
   useEffect(() => {
     const timer = setTimeout(() => onSearch(value), 150);
@@ -19,7 +28,7 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(({ onSearch }, ref) => {
         style={{ fontSize: 11 }}
       />
       <input
-        ref={ref}
+        ref={inputRef}
         type="text"
         value={value}
         onChange={(e) => setValue(e.target.value)}
@@ -30,5 +39,4 @@ const SearchBar = forwardRef<HTMLInputElement, Props>(({ onSearch }, ref) => {
   );
 });
 
-SearchBar.displayName = "SearchBar";
 export default SearchBar;

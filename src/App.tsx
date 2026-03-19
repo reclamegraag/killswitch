@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import SearchBar from "./components/SearchBar";
+import SearchBar, { SearchBarHandle } from "./components/SearchBar";
 import SortControls from "./components/SortControls";
 import ProcessList from "./components/ProcessList";
 import { useProcesses } from "./hooks/useProcesses";
@@ -10,7 +10,7 @@ export default function App() {
   const { processes, killingNames, killByName } = useProcesses();
   const [search, setSearch] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const searchRef = useRef<HTMLInputElement>(null);
+  const searchRef = useRef<SearchBarHandle>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
   const filtered = processes.filter((p) =>
