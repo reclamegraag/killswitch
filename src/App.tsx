@@ -96,7 +96,7 @@ export default function App() {
   return (
     <div className="h-full p-2">
       <div
-        className="h-full flex flex-col rounded-2xl border border-white/30"
+        className="h-full flex flex-col rounded-2xl overflow-hidden border border-white/30"
         style={{
           background: "var(--glass-bg)",
           boxShadow: "0 1px 4px rgba(0,0,0,0.08)",

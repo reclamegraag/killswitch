@@ -10,12 +10,12 @@ interface Props {
 export default function ProcessRow({ process, killing, onKill, selected }: Props) {
   return (
     <div
-      className={`flex items-center gap-3 py-2 transition-all group ${
+      className={`flex items-center gap-3 px-5 py-2 transition-all group ${
         killing ? "killing" : ""
       } ${selected ? "bg-blue-500/10" : "hover:bg-black/[0.03]"}`}
     >
-      {/* Icon */}
-      <div className="w-7 h-7 flex-shrink-0 flex items-center justify-center">
+      {/* Icon — rounded container with overflow-hidden to mask any edge clipping */}
+      <div className="w-8 h-8 flex-shrink-0 rounded-lg bg-white/60 overflow-hidden flex items-center justify-center">
         {process.icon_base64 ? (
           <img
             src={`data:image/png;base64,${process.icon_base64}`}

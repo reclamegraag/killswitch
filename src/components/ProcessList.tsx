@@ -30,7 +30,7 @@ export default function ProcessList({ processes, killingNames, onKill, selectedI
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-5" ref={listRef}>
+    <div className="flex-1 overflow-y-auto" ref={listRef}>
       {processes.map((p, i) => (
         <ProcessRow
           key={p.name}
