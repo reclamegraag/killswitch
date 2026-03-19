@@ -45,17 +45,17 @@ export default function App() {
         </div>
 
         {/* Search */}
-        <div className="px-3 flex-shrink-0">
+        <div className="px-4 flex-shrink-0">
           <SearchBar onSearch={handleSearch} />
         </div>
 
         {/* Sort */}
-        <div className="px-3 pb-1 flex-shrink-0">
+        <div className="px-4 pb-1 flex-shrink-0">
           <SortControls field={field} direction={direction} onToggle={toggle} />
         </div>
 
         {/* Divider */}
-        <div className="mx-3 border-t border-black/5 flex-shrink-0" />
+        <div className="mx-4 border-t border-black/5 flex-shrink-0" />
 
         {/* Process list */}
         <ProcessList processes={sorted} killingNames={killingNames} onKill={killByName} />

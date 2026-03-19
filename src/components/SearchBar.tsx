@@ -13,18 +13,38 @@ export default function SearchBar({ onSearch }: Props) {
   }, [value, onSearch]);
 
   return (
-    <div className="relative mb-2">
+    <div style={{ position: "relative", marginBottom: 8 }}>
       <i
-        className="fa-solid fa-magnifying-glass absolute top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-        style={{ fontSize: 10, left: 10 }}
+        className="fa-solid fa-magnifying-glass"
+        style={{
+          position: "absolute",
+          left: 10,
+          top: "50%",
+          transform: "translateY(-50%)",
+          fontSize: 11,
+          color: "#9ca3af",
+          pointerEvents: "none",
+        }}
       />
       <input
         type="text"
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder="Search processes..."
-        className="w-full py-1.5 rounded-lg bg-black/[0.04] border border-black/[0.06] text-[12px] text-gray-700 placeholder-gray-400 outline-none focus:bg-black/[0.06] focus:border-blue-400/40 transition"
-        style={{ paddingLeft: 28, paddingRight: 12 }}
+        style={{
+          width: "100%",
+          paddingLeft: 32,
+          paddingRight: 12,
+          paddingTop: 6,
+          paddingBottom: 6,
+          borderRadius: 8,
+          backgroundColor: "rgba(0,0,0,0.04)",
+          border: "1px solid rgba(0,0,0,0.06)",
+          fontSize: 12,
+          color: "#374151",
+          outline: "none",
+          fontFamily: "inherit",
+        }}
       />
     </div>
   );

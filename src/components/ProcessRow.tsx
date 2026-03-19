@@ -9,19 +9,18 @@ interface Props {
 export default function ProcessRow({ process, killing, onKill }: Props) {
   return (
     <div
-      className={`flex items-center gap-3 px-4 py-[7px] hover:bg-black/[0.03] transition-all group ${killing ? "killing" : ""}`}
+      className={`flex items-center gap-3 pl-5 pr-4 py-[7px] hover:bg-black/[0.03] transition-all group ${killing ? "killing" : ""}`}
     >
       {/* Icon */}
-      <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center overflow-visible">
+      <div style={{ width: 24, height: 24, flexShrink: 0 }}>
         {process.icon_base64 ? (
           <img
             src={`data:image/png;base64,${process.icon_base64}`}
             alt=""
-            className="w-7 h-7"
-            style={{ objectFit: "contain", minWidth: 28, minHeight: 28 }}
+            style={{ width: 24, height: 24, objectFit: "contain", display: "block" }}
           />
         ) : (
-          <i className="fa-regular fa-window-maximize text-gray-300" style={{ fontSize: 16 }} />
+          <i className="fa-regular fa-window-maximize text-gray-300" style={{ fontSize: 16, lineHeight: "24px", display: "block", textAlign: "center" }} />
         )}
       </div>
 
