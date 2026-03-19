@@ -30,7 +30,7 @@ export default function App() {
         {/* Titlebar */}
         <div
           data-tauri-drag-region
-          className="flex items-center justify-between px-4 pt-3 pb-2 select-none flex-shrink-0"
+          className="flex items-center justify-between px-5 pt-4 pb-2 select-none flex-shrink-0"
         >
           <div className="flex items-center gap-2" data-tauri-drag-region>
             <i className="fa-solid fa-bolt text-blue-500" style={{ fontSize: 13 }} />
@@ -45,17 +45,17 @@ export default function App() {
         </div>
 
         {/* Search */}
-        <div className="px-4 flex-shrink-0">
+        <div className="px-5 flex-shrink-0">
           <SearchBar onSearch={handleSearch} />
         </div>
 
         {/* Sort */}
-        <div className="px-4 pb-1 flex-shrink-0">
+        <div className="px-5 pb-2 flex-shrink-0">
           <SortControls field={field} direction={direction} onToggle={toggle} />
         </div>
 
         {/* Divider */}
-        <div className="mx-4 border-t border-black/5 flex-shrink-0" />
+        <div className="mx-5 border-t border-black/5 flex-shrink-0" />
 
         {/* Process list */}
         <ProcessList processes={sorted} killingNames={killingNames} onKill={killByName} />

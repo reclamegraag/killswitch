@@ -9,34 +9,34 @@ interface Props {
 export default function ProcessRow({ process, killing, onKill }: Props) {
   return (
     <div
-      className={`flex items-center gap-3 pl-5 pr-4 py-[7px] hover:bg-black/[0.03] transition-all group ${killing ? "killing" : ""}`}
+      className={`flex items-center gap-3 px-5 py-2 hover:bg-black/[0.03] transition-all group ${killing ? "killing" : ""}`}
     >
       {/* Icon */}
-      <div style={{ width: 24, height: 24, flexShrink: 0 }}>
+      <div className="w-7 h-7 flex-shrink-0 flex items-center justify-center">
         {process.icon_base64 ? (
           <img
             src={`data:image/png;base64,${process.icon_base64}`}
             alt=""
-            style={{ width: 24, height: 24, objectFit: "contain", display: "block" }}
+            className="w-6 h-6 object-contain"
           />
         ) : (
-          <i className="fa-regular fa-window-maximize text-gray-300" style={{ fontSize: 16, lineHeight: "24px", display: "block", textAlign: "center" }} />
+          <i className="fa-regular fa-window-maximize text-gray-300" style={{ fontSize: 14 }} />
         )}
       </div>
 
       {/* Name + details */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <span className="text-[12px] font-medium text-gray-700 truncate leading-tight">
             {process.name}
           </span>
           {process.count > 1 && (
-            <span className="text-[10px] font-semibold bg-gray-200 text-gray-500 rounded-md px-2 py-[3px] leading-none flex-shrink-0">
+            <span className="text-[10px] font-semibold bg-gray-200 text-gray-500 rounded-md px-2 py-0.5 leading-none flex-shrink-0">
               {process.count}
             </span>
           )}
         </div>
-        <div className="text-[10px] text-gray-400 leading-tight">
+        <div className="text-[10px] text-gray-400 leading-tight mt-0.5">
           {process.cpu_usage.toFixed(1)}% CPU · {process.memory_mb.toFixed(1)} MB
         </div>
       </div>
@@ -44,10 +44,10 @@ export default function ProcessRow({ process, killing, onKill }: Props) {
       {/* Kill button */}
       <button
         onClick={() => onKill(process.name)}
-        className="opacity-0 group-hover:opacity-100 w-6 h-6 flex-shrink-0 flex items-center justify-center rounded-md bg-red-500/80 hover:bg-red-600 text-white transition-all cursor-pointer"
+        className="opacity-0 group-hover:opacity-100 w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-md bg-red-500/80 hover:bg-red-600 text-white transition-all cursor-pointer"
         title={process.count > 1 ? `Kill all ${process.count} instances` : "Kill process"}
       >
-        <i className="fa-solid fa-power-off" style={{ fontSize: 9 }} />
+        <i className="fa-solid fa-power-off" style={{ fontSize: 10 }} />
       </button>
     </div>
   );
