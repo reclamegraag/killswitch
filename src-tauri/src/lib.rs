@@ -27,7 +27,7 @@ pub fn run() {
 
             let _ = app.autolaunch().enable();
 
-            if let Err(e) = app.global_shortcut().on_shortcut("super+alt+k", move |app, _shortcut, event| {
+            if let Err(e) = app.global_shortcut().on_shortcut("super+alt+s", move |app, _shortcut, event| {
                 if event.state == ShortcutState::Pressed {
                     if let Some(window) = app.get_webview_window("main") {
                         let _ = window.show();
