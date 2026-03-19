@@ -1,9 +1,9 @@
-import { ProcessInfo } from "../types";
+import { GroupedProcess } from "../hooks/useProcesses";
 
 interface Props {
-  process: ProcessInfo;
+  process: GroupedProcess;
   killing: boolean;
-  onKill: (pid: number) => void;
+  onKill: (name: string) => void;
 }
 
 export default function ProcessRow({ process, killing, onKill }: Props) {
@@ -26,19 +26,26 @@ export default function ProcessRow({ process, killing, onKill }: Props) {
 
       {/* Name + details */}
       <div className="flex-1 min-w-0">
-        <div className="text-[12px] font-medium text-gray-700 truncate leading-tight">
-          {process.name}
+        <div className="flex items-center gap-1.5">
+          <span className="text-[12px] font-medium text-gray-700 truncate leading-tight">
+            {process.name}
+          </span>
+          {process.count > 1 && (
+            <span className="text-[9px] font-semibold bg-gray-200 text-gray-500 rounded px-1 py-[1px] leading-none flex-shrink-0">
+              {process.count}
+            </span>
+          )}
         </div>
         <div className="text-[10px] text-gray-400 leading-tight">
-          PID {process.pid} · {process.cpu_usage.toFixed(1)}% · {process.memory_mb.toFixed(1)} MB
+          {process.cpu_usage.toFixed(1)}% CPU · {process.memory_mb.toFixed(1)} MB
         </div>
       </div>
 
       {/* Kill button */}
       <button
-        onClick={() => onKill(process.pid)}
+        onClick={() => onKill(process.name)}
         className="opacity-0 group-hover:opacity-100 w-6 h-6 flex-shrink-0 flex items-center justify-center rounded-md bg-red-500/80 hover:bg-red-600 text-white transition-all cursor-pointer"
-        title="Kill process"
+        title={process.count > 1 ? `Kill all ${process.count} instances` : "Kill process"}
       >
         <i className="fa-solid fa-power-off" style={{ fontSize: 9 }} />
       </button>

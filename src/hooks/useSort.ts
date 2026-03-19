@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
-import { ProcessInfo, SortField, SortDirection } from "../types";
+import { GroupedProcess } from "./useProcesses";
+import { SortField, SortDirection } from "../types";
 
-export function useSort(processes: ProcessInfo[]) {
+export function useSort(processes: GroupedProcess[]) {
   const [field, setField] = useState<SortField>("name");
   const [direction, setDirection] = useState<SortDirection>("asc");
 

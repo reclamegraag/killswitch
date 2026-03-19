@@ -60,6 +60,23 @@ pub fn kill_process(pid: u32) -> Result<(), String> {
     }
 }
 
+#[tauri::command]
+pub fn kill_processes_by_name(name: String) -> Result<u32, String> {
+    let sys = System::new_all();
+    let mut count = 0u32;
+    for (_pid, process) in sys.processes() {
+        if process.name().to_string_lossy() == name {
+            process.kill();
+            count += 1;
+        }
+    }
+    if count > 0 {
+        Ok(count)
+    } else {
+        Err(format!("No processes found with name '{}'", name))
+    }
+}
+
 fn extract_icon_cached(
     exe_path: PathBuf,
     cache: &Mutex<HashMap<PathBuf, Option<String>>>,

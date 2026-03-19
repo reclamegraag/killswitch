@@ -1,13 +1,13 @@
-import { ProcessInfo } from "../types";
+import { GroupedProcess } from "../hooks/useProcesses";
 import ProcessRow from "./ProcessRow";
 
 interface Props {
-  processes: ProcessInfo[];
-  killingPids: Set<number>;
-  onKill: (pid: number) => void;
+  processes: GroupedProcess[];
+  killingNames: Set<string>;
+  onKill: (name: string) => void;
 }
 
-export default function ProcessList({ processes, killingPids, onKill }: Props) {
+export default function ProcessList({ processes, killingNames, onKill }: Props) {
   if (processes.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
@@ -20,9 +20,9 @@ export default function ProcessList({ processes, killingPids, onKill }: Props) {
     <div className="flex-1 overflow-y-auto">
       {processes.map((p) => (
         <ProcessRow
-          key={p.pid}
+          key={p.name}
           process={p}
-          killing={killingPids.has(p.pid)}
+          killing={killingNames.has(p.name)}
           onKill={onKill}
         />
       ))}

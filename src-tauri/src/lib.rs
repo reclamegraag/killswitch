@@ -43,6 +43,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::process::list_processes,
             commands::process::kill_process,
+            commands::process::kill_processes_by_name,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

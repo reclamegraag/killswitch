@@ -7,7 +7,7 @@ import { useProcesses } from "./hooks/useProcesses";
 import { useSort } from "./hooks/useSort";
 
 export default function App() {
-  const { processes, killingPids, killProcess } = useProcesses();
+  const { processes, killingNames, killByName } = useProcesses();
   const [search, setSearch] = useState("");
 
   const filtered = processes.filter((p) =>
@@ -24,8 +24,7 @@ export default function App() {
         className="h-full flex flex-col rounded-2xl overflow-hidden border border-white/30"
         style={{
           background: "var(--glass-bg)",
-          backdropFilter: "blur(var(--glass-blur))",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.08), 0 0 0 1px rgba(255,255,255,0.18) inset",
+          boxShadow: "0 1px 4px rgba(0,0,0,0.08)",
         }}
       >
         {/* Titlebar */}
@@ -38,7 +37,7 @@ export default function App() {
             <span className="text-[13px] font-bold text-gray-700 tracking-tight">KillSwitch</span>
           </div>
           <button
-            onClick={() => getCurrentWindow().close()}
+            onClick={() => getCurrentWindow().destroy()}
             className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-500/15 text-gray-400 hover:text-red-500 transition cursor-pointer"
           >
             <i className="fa-solid fa-xmark" style={{ fontSize: 11 }} />
@@ -59,7 +58,7 @@ export default function App() {
         <div className="mx-3 border-t border-black/5 flex-shrink-0" />
 
         {/* Process list */}
-        <ProcessList processes={sorted} killingPids={killingPids} onKill={killProcess} />
+        <ProcessList processes={sorted} killingNames={killingNames} onKill={killByName} />
 
         {/* Footer */}
         <div className="px-4 py-1.5 text-[10px] text-gray-400 text-center flex-shrink-0 border-t border-black/5">
