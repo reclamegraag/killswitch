@@ -9,7 +9,7 @@ import { useSort } from "./hooks/useSort";
 export default function App() {
   const { processes, killingNames, killByName } = useProcesses();
   const [search, setSearch] = useState("");
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedName, setSelectedName] = useState<string | null>(null);
   const searchRef = useRef<SearchBarHandle>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -19,17 +19,29 @@ export default function App() {
 
   const { sorted, field, direction, toggle } = useSort(filtered);
 
+  // Resolve selectedName to current index — falls back to 0 if process disappeared
+  const selectedIndex = selectedName !== null
+    ? Math.max(0, sorted.findIndex((p) => p.name === selectedName))
+    : 0;
+
+  // Keep selection valid: if selected process disappeared, select first item
+  useEffect(() => {
+    if (sorted.length === 0) {
+      setSelectedName(null);
+    } else if (selectedName === null || !sorted.some((p) => p.name === selectedName)) {
+      setSelectedName(sorted[0].name);
+    }
+  }, [sorted, selectedName]);
+
+  const selectByIndex = useCallback((indexFn: (current: number) => number) => {
+    const newIndex = Math.max(0, Math.min(indexFn(selectedIndex), sorted.length - 1));
+    setSelectedName(sorted[newIndex]?.name ?? null);
+  }, [selectedIndex, sorted]);
+
   const handleSearch = useCallback((q: string) => {
     setSearch(q);
-    setSelectedIndex(0);
+    setSelectedName(null);
   }, []);
-
-  // Keep selectedIndex in bounds
-  useEffect(() => {
-    if (selectedIndex >= sorted.length) {
-      setSelectedIndex(Math.max(0, sorted.length - 1));
-    }
-  }, [sorted.length, selectedIndex]);
 
   // Global keyboard handler
   useEffect(() => {
@@ -48,12 +60,36 @@ export default function App() {
       // Arrow navigation
       if (e.key === "ArrowDown") {
         e.preventDefault();
-        setSelectedIndex((i) => Math.min(i + 1, sorted.length - 1));
+        selectByIndex((i) => i + 1);
         return;
       }
       if (e.key === "ArrowUp") {
         e.preventDefault();
-        setSelectedIndex((i) => Math.max(i - 1, 0));
+        selectByIndex((i) => i - 1);
+        return;
+      }
+
+      // Page navigation (10 items per page)
+      if (e.key === "PageDown") {
+        e.preventDefault();
+        selectByIndex((i) => i + 10);
+        return;
+      }
+      if (e.key === "PageUp") {
+        e.preventDefault();
+        selectByIndex((i) => i - 10);
+        return;
+      }
+
+      // Home / End
+      if (e.key === "Home") {
+        e.preventDefault();
+        selectByIndex(() => 0);
+        return;
+      }
+      if (e.key === "End") {
+        e.preventDefault();
+        selectByIndex(() => sorted.length - 1);
         return;
       }
 
@@ -86,7 +122,7 @@ export default function App() {
 
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [sorted, selectedIndex, search, killByName, toggle]);
+  }, [sorted, selectedIndex, search, killByName, toggle, selectByIndex]);
 
   // Auto-focus search on mount
   useEffect(() => {
@@ -144,7 +180,7 @@ export default function App() {
 
         {/* Footer */}
         <div className="px-4 py-1.5 text-[10px] text-gray-400 text-center flex-shrink-0 border-t border-black/5">
-          {filtered.length} of {processes.length} processes · <span className="text-gray-300">↑↓ navigate · Enter kill · Esc close</span>
+          {filtered.length} of {processes.length} processes · <span className="text-gray-300">↑↓ PgUp/Dn navigate · Enter kill · Esc close</span>
         </div>
       </div>
     </div>
