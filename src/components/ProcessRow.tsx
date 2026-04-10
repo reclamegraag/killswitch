@@ -1,4 +1,5 @@
 import { GroupedProcess } from "../hooks/useProcesses";
+import Tooltip from "./Tooltip";
 
 interface Props {
   process: GroupedProcess;
@@ -44,16 +45,21 @@ export default function ProcessRow({ process, killing, onKill, selected }: Props
       </div>
 
       {/* Kill button */}
-      <button
-        onClick={() => onKill(process.name)}
-        className={`w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-md bg-red-500/80 hover:bg-red-600 text-white transition-all cursor-pointer ${
-          selected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-        }`}
-        title={process.count > 1 ? `Kill all ${process.count} instances` : "Kill process"}
-        tabIndex={-1}
+      <Tooltip
+        content={process.count > 1 ? `Kill alle ${process.count} processen` : "Kill proces"}
+        shortcut={["Enter"]}
+        position="left"
       >
-        <i className="fa-solid fa-power-off" style={{ fontSize: 10 }} />
-      </button>
+        <button
+          onClick={() => onKill(process.name)}
+          className={`w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-md bg-red-500/80 hover:bg-red-600 text-white transition-all cursor-pointer ${
+            selected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          }`}
+          tabIndex={-1}
+        >
+          <i className="fa-solid fa-power-off" style={{ fontSize: 10 }} />
+        </button>
+      </Tooltip>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useImperativeHandle, useRef, forwardRef } from "react";
+import Tooltip from "./Tooltip";
 
 interface Props {
   onSearch: (query: string) => void;
@@ -6,6 +7,7 @@ interface Props {
 
 export interface SearchBarHandle {
   focus: () => void;
+  clear: () => void;
 }
 
 const SearchBar = forwardRef<SearchBarHandle, Props>(function SearchBar({ onSearch }, ref) {
@@ -14,6 +16,11 @@ const SearchBar = forwardRef<SearchBarHandle, Props>(function SearchBar({ onSear
 
   useImperativeHandle(ref, () => ({
     focus: () => inputRef.current?.focus(),
+    clear: () => {
+      setValue("");
+      onSearch("");
+      inputRef.current?.focus();
+    }
   }));
 
   useEffect(() => {
@@ -33,8 +40,24 @@ const SearchBar = forwardRef<SearchBarHandle, Props>(function SearchBar({ onSear
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder="Search processes..."
-        className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-black/[0.04] border border-black/[0.06] text-[12px] text-gray-700 placeholder-gray-400 outline-none focus:bg-black/[0.06] focus:border-blue-400/40 transition"
+        className="w-full pl-8 pr-8 py-1.5 rounded-lg bg-black/[0.04] border border-black/[0.06] text-[12px] text-gray-700 placeholder-gray-400 outline-none focus:bg-black/[0.06] focus:border-blue-400/40 transition"
       />
+      {value && (
+        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+          <Tooltip content="Wissen" shortcut={["Esc"]} position="bottom">
+            <button
+              onClick={() => {
+                setValue("");
+                onSearch("");
+                inputRef.current?.focus();
+              }}
+              className="text-gray-400 hover:text-gray-600 focus:outline-none transition-colors cursor-pointer"
+            >
+              <i className="fa-solid fa-xmark" style={{ fontSize: 12 }} />
+            </button>
+          </Tooltip>
+        </div>
+      )}
     </div>
   );
 });

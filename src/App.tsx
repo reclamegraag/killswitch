@@ -3,6 +3,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import SearchBar, { SearchBarHandle } from "./components/SearchBar";
 import SortControls from "./components/SortControls";
 import ProcessList from "./components/ProcessList";
+import Tooltip from "./components/Tooltip";
 import { useProcesses } from "./hooks/useProcesses";
 import { useSort } from "./hooks/useSort";
 
@@ -49,10 +50,9 @@ export default function App() {
       // Escape closes the app
       if (e.key === "Escape") {
         if (search) {
-          setSearch("");
-          searchRef.current?.focus();
+          searchRef.current?.clear();
         } else {
-          getCurrentWindow().destroy();
+          getCurrentWindow().hide();
         }
         return;
       }
@@ -147,13 +147,15 @@ export default function App() {
             <i className="fa-solid fa-bolt text-blue-500" style={{ fontSize: 13 }} />
             <span className="text-[13px] font-bold text-gray-700 tracking-tight">KillSwitch</span>
           </div>
-          <button
-            onClick={() => getCurrentWindow().destroy()}
-            className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-500/15 text-gray-400 hover:text-red-500 transition cursor-pointer"
-            tabIndex={-1}
-          >
-            <i className="fa-solid fa-xmark" style={{ fontSize: 11 }} />
-          </button>
+          <Tooltip content="Sluiten" shortcut={["Esc"]} position="bottom">
+            <button
+              onClick={() => getCurrentWindow().hide()}
+              className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-500/15 text-gray-400 hover:text-red-500 transition cursor-pointer"
+              tabIndex={-1}
+            >
+              <i className="fa-solid fa-xmark" style={{ fontSize: 11 }} />
+            </button>
+          </Tooltip>
         </div>
 
         {/* Search */}
