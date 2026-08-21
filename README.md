@@ -63,7 +63,7 @@ The installer (MSI) will be generated in `src-tauri/target/release/bundle/msi/`.
 killswitch/
 ├── src/                    # React frontend
 │   ├── components/         # SearchBar, SortControls, ProcessList, ProcessRow
-│   ├── hooks/              # useProcesses (2s polling), useSort
+│   ├── hooks/              # useProcesses (1s polling), useSort
 │   ├── App.tsx             # Glass container + custom titlebar
 │   ├── types.ts            # TypeScript interfaces
 │   └── index.css           # Tailwind + glass theme + fonts

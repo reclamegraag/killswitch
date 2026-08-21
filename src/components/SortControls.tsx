@@ -22,11 +22,11 @@ function formatGb(mb: number): string {
 }
 
 function formatCpu(usage: number): string {
-  return `${usage.toFixed(1)}% CPU`;
+  return `${Math.round(usage)}% CPU`;
 }
 
 function formatMemory(usage: number): string {
-  return `${usage.toFixed(1)}% Memory`;
+  return `${Math.round(usage)}% Memory`;
 }
 
 export default function SortControls({ field, direction, onToggle, totalCpuUsage, totalMemoryMb, totalMemoryUsage }: Props) {

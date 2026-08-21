@@ -9,15 +9,18 @@ use crate::models::{ProcessInfo, ProcessSnapshot};
 
 pub struct AppState {
     pub system: Mutex<System>,
-    pub cpu_times: Mutex<Option<CpuTimes>>,
+    pub cpu_utility_query: Mutex<Option<CpuUtilityQuery>>,
     pub icon_cache: Mutex<HashMap<PathBuf, Option<String>>>,
 }
 
-#[derive(Clone, Copy)]
-pub(crate) struct CpuTimes {
-    idle: u64,
-    total: u64,
+#[cfg(windows)]
+pub(crate) struct CpuUtilityQuery {
+    query: isize,
+    counter: isize,
 }
+
+#[cfg(not(windows))]
+pub(crate) struct CpuUtilityQuery;
 
 #[tauri::command]
 pub fn list_processes(state: State<AppState>) -> ProcessSnapshot {
@@ -64,9 +67,7 @@ pub fn list_processes(state: State<AppState>) -> ProcessSnapshot {
 
 #[cfg(windows)]
 fn system_usage(state: &AppState, _sys: &System) -> (f32, f32) {
-    use windows::Win32::Foundation::FILETIME;
     use windows::Win32::System::SystemInformation::{GlobalMemoryStatusEx, MEMORYSTATUSEX};
-    use windows::Win32::System::Threading::GetSystemTimes;
 
     let mut memory = MEMORYSTATUSEX {
         dwLength: std::mem::size_of::<MEMORYSTATUSEX>() as u32,
@@ -78,39 +79,77 @@ fn system_usage(state: &AppState, _sys: &System) -> (f32, f32) {
             .unwrap_or_default()
     };
 
-    let mut idle = FILETIME::default();
-    let mut kernel = FILETIME::default();
-    let mut user = FILETIME::default();
-    let current = unsafe {
-        GetSystemTimes(Some(&mut idle), Some(&mut kernel), Some(&mut user)).ok().map(|_| CpuTimes {
-            idle: filetime_to_u64(idle),
-            total: filetime_to_u64(kernel).saturating_add(filetime_to_u64(user)),
-        })
+    let total_cpu_usage = {
+        let mut query = state.cpu_utility_query.lock().unwrap();
+        if query.is_none() {
+            *query = CpuUtilityQuery::new();
+        }
+        query
+            .as_ref()
+            .and_then(CpuUtilityQuery::read)
+            .unwrap_or_default()
     };
-
-    let total_cpu_usage = current
-        .and_then(|current| {
-            let mut previous = state.cpu_times.lock().unwrap();
-            let usage = previous.map(|previous| {
-                let elapsed = current.total.saturating_sub(previous.total);
-                let idle = current.idle.saturating_sub(previous.idle);
-                if elapsed == 0 {
-                    0.0
-                } else {
-                    100.0 * (elapsed.saturating_sub(idle) as f32 / elapsed as f32)
-                }
-            });
-            *previous = Some(current);
-            usage
-        })
-        .unwrap_or_default();
 
     (total_cpu_usage, memory_usage)
 }
 
 #[cfg(windows)]
-fn filetime_to_u64(filetime: windows::Win32::Foundation::FILETIME) -> u64 {
-    ((filetime.dwHighDateTime as u64) << 32) | filetime.dwLowDateTime as u64
+impl CpuUtilityQuery {
+    fn new() -> Option<Self> {
+        use windows::core::PCWSTR;
+        use windows::Win32::System::Performance::{
+            PdhAddEnglishCounterW, PdhCloseQuery, PdhCollectQueryData, PdhOpenQueryW,
+        };
+
+        let mut query = 0;
+        let mut counter = 0;
+        let path: Vec<u16> = "\\Processor Information(_Total)\\% Processor Utility\0"
+            .encode_utf16()
+            .collect();
+        unsafe {
+            if PdhOpenQueryW(PCWSTR::null(), 0, &mut query) != 0
+                || PdhAddEnglishCounterW(query, PCWSTR(path.as_ptr()), 0, &mut counter) != 0
+            {
+                if query != 0 {
+                    PdhCloseQuery(query);
+                }
+                return None;
+            }
+            // PDH percentage counters need a baseline sample before a value is available.
+            PdhCollectQueryData(query);
+        }
+        Some(Self { query, counter })
+    }
+
+    fn read(&self) -> Option<f32> {
+        use windows::Win32::System::Performance::{
+            PdhCollectQueryData, PdhGetFormattedCounterValue, PDH_FMT_COUNTERVALUE, PDH_FMT_DOUBLE,
+        };
+
+        unsafe {
+            if PdhCollectQueryData(self.query) != 0 {
+                return None;
+            }
+            let mut value = PDH_FMT_COUNTERVALUE::default();
+            if PdhGetFormattedCounterValue(self.counter, PDH_FMT_DOUBLE, None, &mut value) != 0
+                || value.CStatus != 0
+            {
+                return None;
+            }
+            Some(value.Anonymous.doubleValue as f32)
+        }
+    }
+}
+
+#[cfg(windows)]
+impl Drop for CpuUtilityQuery {
+    fn drop(&mut self) {
+        use windows::Win32::System::Performance::PdhCloseQuery;
+
+        unsafe {
+            PdhCloseQuery(self.query);
+        }
+    }
 }
 
 #[cfg(not(windows))]

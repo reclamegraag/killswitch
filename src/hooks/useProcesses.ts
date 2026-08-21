@@ -57,7 +57,7 @@ export function useProcesses() {
 
   useEffect(() => {
     refresh();
-    intervalRef.current = setInterval(refresh, 2000);
+    intervalRef.current = setInterval(refresh, 1000);
     return () => clearInterval(intervalRef.current);
   }, [refresh]);
 
