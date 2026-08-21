@@ -25,6 +25,8 @@ pub(crate) struct CpuUsageQuery;
 #[tauri::command]
 pub fn list_processes(state: State<AppState>) -> ProcessSnapshot {
     let mut sys = state.system.lock().unwrap();
+    sys.refresh_cpu_usage();
+    let logical_cpu_count = sys.cpus().len().max(1) as f32;
     sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
 
     let processes: Vec<ProcessInfo> = sys
@@ -47,7 +49,9 @@ pub fn list_processes(state: State<AppState>) -> ProcessSnapshot {
             Some(ProcessInfo {
                 pid: pid.as_u32(),
                 name,
-                cpu_usage: process.cpu_usage(),
+                // sysinfo reports process CPU relative to one logical core.
+                // Normalize it to the entire machine, as Task Manager does.
+                cpu_usage: process.cpu_usage() / logical_cpu_count,
                 memory_mb: process.memory() as f64 / (1024.0 * 1024.0),
                 icon_base64,
             })
