@@ -9,18 +9,18 @@ use crate::models::{ProcessInfo, ProcessSnapshot};
 
 pub struct AppState {
     pub system: Mutex<System>,
-    pub cpu_utility_query: Mutex<Option<CpuUtilityQuery>>,
+    pub cpu_usage_query: Mutex<Option<CpuUsageQuery>>,
     pub icon_cache: Mutex<HashMap<PathBuf, Option<String>>>,
 }
 
 #[cfg(windows)]
-pub(crate) struct CpuUtilityQuery {
+pub(crate) struct CpuUsageQuery {
     query: isize,
     counter: isize,
 }
 
 #[cfg(not(windows))]
-pub(crate) struct CpuUtilityQuery;
+pub(crate) struct CpuUsageQuery;
 
 #[tauri::command]
 pub fn list_processes(state: State<AppState>) -> ProcessSnapshot {
@@ -80,13 +80,13 @@ fn system_usage(state: &AppState, _sys: &System) -> (f32, f32) {
     };
 
     let total_cpu_usage = {
-        let mut query = state.cpu_utility_query.lock().unwrap();
+        let mut query = state.cpu_usage_query.lock().unwrap();
         if query.is_none() {
-            *query = CpuUtilityQuery::new();
+            *query = CpuUsageQuery::new();
         }
         query
             .as_ref()
-            .and_then(CpuUtilityQuery::read)
+            .and_then(CpuUsageQuery::read)
             .unwrap_or_default()
     };
 
@@ -94,7 +94,7 @@ fn system_usage(state: &AppState, _sys: &System) -> (f32, f32) {
 }
 
 #[cfg(windows)]
-impl CpuUtilityQuery {
+impl CpuUsageQuery {
     fn new() -> Option<Self> {
         use windows::core::PCWSTR;
         use windows::Win32::System::Performance::{
@@ -103,7 +103,7 @@ impl CpuUtilityQuery {
 
         let mut query = 0;
         let mut counter = 0;
-        let path: Vec<u16> = "\\Processor Information(_Total)\\% Processor Utility\0"
+        let path: Vec<u16> = "\\Processor(_Total)\\% Processor Time\0"
             .encode_utf16()
             .collect();
         unsafe {
@@ -136,13 +136,13 @@ impl CpuUtilityQuery {
             {
                 return None;
             }
-            Some(value.Anonymous.doubleValue as f32)
+            Some((value.Anonymous.doubleValue as f32).clamp(0.0, 100.0))
         }
     }
 }
 
 #[cfg(windows)]
-impl Drop for CpuUtilityQuery {
+impl Drop for CpuUsageQuery {
     fn drop(&mut self) {
         use windows::Win32::System::Performance::PdhCloseQuery;
 
