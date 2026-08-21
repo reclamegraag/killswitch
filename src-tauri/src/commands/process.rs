@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Mutex;
+use std::time::Instant;
 
 use sysinfo::{Pid, System};
 use tauri::State;
@@ -9,18 +10,21 @@ use crate::models::{ProcessInfo, ProcessSnapshot};
 
 pub struct AppState {
     pub system: Mutex<System>,
-    pub cpu_usage_query: Mutex<Option<CpuUsageQuery>>,
+    pub process_cpu_sampler: Mutex<ProcessCpuSampler>,
     pub icon_cache: Mutex<HashMap<PathBuf, Option<String>>>,
 }
 
-#[cfg(windows)]
-pub(crate) struct CpuUsageQuery {
-    query: isize,
-    counter: isize,
+#[derive(Clone, Copy)]
+struct ProcessCpuTimes {
+    created_at: u64,
+    cpu_time: u64,
 }
 
-#[cfg(not(windows))]
-pub(crate) struct CpuUsageQuery;
+#[derive(Default)]
+pub(crate) struct ProcessCpuSampler {
+    previous: HashMap<u32, ProcessCpuTimes>,
+    sampled_at: Option<Instant>,
+}
 
 #[tauri::command]
 pub fn list_processes(state: State<AppState>) -> ProcessSnapshot {
@@ -28,6 +32,7 @@ pub fn list_processes(state: State<AppState>) -> ProcessSnapshot {
     sys.refresh_cpu_usage();
     let logical_cpu_count = sys.cpus().len().max(1) as f32;
     sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
+    let process_cpu = sample_process_cpu(&state, logical_cpu_count);
 
     let processes: Vec<ProcessInfo> = sys
         .processes()
@@ -49,9 +54,7 @@ pub fn list_processes(state: State<AppState>) -> ProcessSnapshot {
             Some(ProcessInfo {
                 pid: pid.as_u32(),
                 name,
-                // sysinfo reports process CPU relative to one logical core.
-                // Normalize it to the entire machine, as Task Manager does.
-                cpu_usage: process.cpu_usage() / logical_cpu_count,
+                cpu_usage: process_cpu.get(&pid.as_u32()).copied().unwrap_or_default(),
                 memory_mb: process.memory() as f64 / (1024.0 * 1024.0),
                 icon_base64,
             })
@@ -59,7 +62,8 @@ pub fn list_processes(state: State<AppState>) -> ProcessSnapshot {
         .collect();
 
     let total_memory_mb = processes.iter().map(|process| process.memory_mb).sum();
-    let (total_cpu_usage, total_memory_usage) = system_usage(&state, &sys);
+    let total_cpu_usage = process_cpu.values().sum::<f32>().clamp(0.0, 100.0);
+    let total_memory_usage = system_memory_usage(&sys);
 
     ProcessSnapshot {
         processes,
@@ -70,7 +74,7 @@ pub fn list_processes(state: State<AppState>) -> ProcessSnapshot {
 }
 
 #[cfg(windows)]
-fn system_usage(state: &AppState, _sys: &System) -> (f32, f32) {
+fn system_memory_usage(_sys: &System) -> f32 {
     use windows::Win32::System::SystemInformation::{GlobalMemoryStatusEx, MEMORYSTATUSEX};
 
     let mut memory = MEMORYSTATUSEX {
@@ -83,87 +87,114 @@ fn system_usage(state: &AppState, _sys: &System) -> (f32, f32) {
             .unwrap_or_default()
     };
 
-    let total_cpu_usage = {
-        let mut query = state.cpu_usage_query.lock().unwrap();
-        if query.is_none() {
-            *query = CpuUsageQuery::new();
+    memory_usage
+}
+
+#[cfg(windows)]
+fn sample_process_cpu(state: &AppState, logical_cpu_count: f32) -> HashMap<u32, f32> {
+    let current = match query_process_cpu_times() {
+        Some(current) => current,
+        None => return HashMap::new(),
+    };
+    let now = Instant::now();
+    let mut sampler = state.process_cpu_sampler.lock().unwrap();
+    let elapsed = sampler
+        .sampled_at
+        .map(|previous| now.duration_since(previous).as_secs_f64())
+        .unwrap_or_default();
+    let mut usage = HashMap::with_capacity(current.len());
+
+    if elapsed > 0.0 {
+        let available_cpu_seconds = elapsed * logical_cpu_count as f64;
+        for (&pid, times) in &current {
+            if let Some(previous) = sampler.previous.get(&pid) {
+                if previous.created_at == times.created_at {
+                    let used_cpu_seconds =
+                        times.cpu_time.saturating_sub(previous.cpu_time) as f64 / 10_000_000.0;
+                    usage.insert(
+                        pid,
+                        (100.0 * used_cpu_seconds / available_cpu_seconds).clamp(0.0, 100.0)
+                            as f32,
+                    );
+                }
+            }
         }
-        query
-            .as_ref()
-            .and_then(CpuUsageQuery::read)
-            .unwrap_or_default()
+    }
+
+    sampler.previous = current;
+    sampler.sampled_at = Some(now);
+    usage
+}
+
+#[cfg(windows)]
+fn query_process_cpu_times() -> Option<HashMap<u32, ProcessCpuTimes>> {
+    use windows::Wdk::System::SystemInformation::{
+        NtQuerySystemInformation, SystemProcessInformation,
+    };
+    use windows::Win32::System::WindowsProgramming::SYSTEM_PROCESS_INFORMATION;
+
+    const STATUS_INFO_LENGTH_MISMATCH: u32 = 0xC0000004;
+    let word_size = std::mem::size_of::<usize>();
+    let mut buffer_size = 256 * 1024usize;
+
+    let buffer = loop {
+        let mut buffer = vec![0usize; buffer_size.div_ceil(word_size)];
+        let mut required = 0u32;
+        let status = unsafe {
+            NtQuerySystemInformation(
+                SystemProcessInformation,
+                buffer.as_mut_ptr().cast(),
+                (buffer.len() * word_size) as u32,
+                &mut required,
+            )
+        };
+        if status.0 >= 0 {
+            break buffer;
+        }
+        if status.0 as u32 != STATUS_INFO_LENGTH_MISMATCH {
+            return None;
+        }
+        buffer_size = (required as usize + 64 * 1024).max(buffer_size * 2);
     };
 
-    (total_cpu_usage, memory_usage)
-}
-
-#[cfg(windows)]
-impl CpuUsageQuery {
-    fn new() -> Option<Self> {
-        use windows::core::PCWSTR;
-        use windows::Win32::System::Performance::{
-            PdhAddEnglishCounterW, PdhCloseQuery, PdhCollectQueryData, PdhOpenQueryW,
-        };
-
-        let mut query = 0;
-        let mut counter = 0;
-        let path: Vec<u16> = "\\Processor(_Total)\\% Processor Time\0"
-            .encode_utf16()
-            .collect();
-        unsafe {
-            if PdhOpenQueryW(PCWSTR::null(), 0, &mut query) != 0
-                || PdhAddEnglishCounterW(query, PCWSTR(path.as_ptr()), 0, &mut counter) != 0
-            {
-                if query != 0 {
-                    PdhCloseQuery(query);
-                }
-                return None;
-            }
-            // PDH percentage counters need a baseline sample before a value is available.
-            PdhCollectQueryData(query);
+    let base = buffer.as_ptr().cast::<u8>();
+    let mut offset = 0usize;
+    let mut result = HashMap::new();
+    loop {
+        let process = unsafe { &*base.add(offset).cast::<SYSTEM_PROCESS_INFORMATION>() };
+        let pid = process.UniqueProcessId.0 as usize as u32;
+        if pid != 0 {
+            let created_at = u64::from_ne_bytes(process.Reserved1[24..32].try_into().ok()?);
+            let user_time = u64::from_ne_bytes(process.Reserved1[32..40].try_into().ok()?);
+            let kernel_time = u64::from_ne_bytes(process.Reserved1[40..48].try_into().ok()?);
+            result.insert(
+                pid,
+                ProcessCpuTimes {
+                    created_at,
+                    cpu_time: user_time.saturating_add(kernel_time),
+                },
+            );
         }
-        Some(Self { query, counter })
-    }
-
-    fn read(&self) -> Option<f32> {
-        use windows::Win32::System::Performance::{
-            PdhCollectQueryData, PdhGetFormattedCounterValue, PDH_FMT_COUNTERVALUE, PDH_FMT_DOUBLE,
-        };
-
-        unsafe {
-            if PdhCollectQueryData(self.query) != 0 {
-                return None;
-            }
-            let mut value = PDH_FMT_COUNTERVALUE::default();
-            if PdhGetFormattedCounterValue(self.counter, PDH_FMT_DOUBLE, None, &mut value) != 0
-                || value.CStatus != 0
-            {
-                return None;
-            }
-            Some((value.Anonymous.doubleValue as f32).clamp(0.0, 100.0))
+        if process.NextEntryOffset == 0 {
+            break;
         }
+        offset += process.NextEntryOffset as usize;
     }
-}
-
-#[cfg(windows)]
-impl Drop for CpuUsageQuery {
-    fn drop(&mut self) {
-        use windows::Win32::System::Performance::PdhCloseQuery;
-
-        unsafe {
-            PdhCloseQuery(self.query);
-        }
-    }
+    Some(result)
 }
 
 #[cfg(not(windows))]
-fn system_usage(_state: &AppState, sys: &System) -> (f32, f32) {
-    let memory_usage = if sys.total_memory() == 0 {
+fn sample_process_cpu(_state: &AppState, _logical_cpu_count: f32) -> HashMap<u32, f32> {
+    HashMap::new()
+}
+
+#[cfg(not(windows))]
+fn system_memory_usage(sys: &System) -> f32 {
+    if sys.total_memory() == 0 {
         0.0
     } else {
         (sys.used_memory() as f64 / sys.total_memory() as f64 * 100.0) as f32
-    };
-    (sys.global_cpu_usage(), memory_usage)
+    }
 }
 
 #[tauri::command]

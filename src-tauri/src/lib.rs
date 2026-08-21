@@ -26,7 +26,7 @@ pub fn run() {
         ))
         .manage(AppState {
             system: Mutex::new(System::new()),
-            cpu_usage_query: Mutex::new(None),
+            process_cpu_sampler: Mutex::new(Default::default()),
             icon_cache: Mutex::new(HashMap::new()),
         })
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())

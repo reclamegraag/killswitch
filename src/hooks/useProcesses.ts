@@ -11,8 +11,6 @@ export interface GroupedProcess {
   icon_base64: string | null;
 }
 
-const CPU_SMOOTHING = 0.35;
-
 export function useProcesses() {
   const [processes, setProcesses] = useState<GroupedProcess[]>([]);
   const [totalCpuUsage, setTotalCpuUsage] = useState(0);
@@ -48,23 +46,7 @@ export function useProcesses() {
         }
       }
 
-      setProcesses((previous) => {
-        const previousCpuByName = new Map(
-          previous.map((process) => [process.name, process.cpu_usage])
-        );
-
-        return Array.from(map.values()).map((process) => {
-          const previousCpu = previousCpuByName.get(process.name);
-          return previousCpu === undefined
-            ? process
-            : {
-                ...process,
-                cpu_usage:
-                  previousCpu * (1 - CPU_SMOOTHING) +
-                  process.cpu_usage * CPU_SMOOTHING,
-              };
-        });
-      });
+      setProcesses(Array.from(map.values()));
       setTotalCpuUsage(snapshot.total_cpu_usage);
       setTotalMemoryMb(snapshot.total_memory_mb);
       setTotalMemoryUsage(snapshot.total_memory_usage);
