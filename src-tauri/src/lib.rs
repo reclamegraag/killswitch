@@ -5,6 +5,7 @@ use commands::process::AppState;
 use std::collections::HashMap;
 use std::sync::Mutex;
 use sysinfo::System;
+use tauri::Manager;
 use tauri_plugin_autostart::MacosLauncher;
 
 fn toggle_window(window: &tauri::WebviewWindow) {
@@ -19,6 +20,14 @@ fn toggle_window(window: &tauri::WebviewWindow) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // This must be the first plugin so a second launch only focuses the
+        // already-running window instead of starting another sampler.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
@@ -31,7 +40,6 @@ pub fn run() {
         })
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
-            use tauri::Manager;
             use tauri::menu::{MenuBuilder, MenuItemBuilder};
             use tauri::tray::TrayIconBuilder;
             use tauri_plugin_autostart::ManagerExt;
@@ -40,13 +48,16 @@ pub fn run() {
             let _ = app.autolaunch().enable();
 
             // Global shortcut: toggle visibility
-            if let Err(e) = app.global_shortcut().on_shortcut("super+alt+s", move |app, _shortcut, event| {
-                if event.state == ShortcutState::Pressed {
-                    if let Some(window) = app.get_webview_window("main") {
-                        toggle_window(&window);
-                    }
-                }
-            }) {
+            if let Err(e) =
+                app.global_shortcut()
+                    .on_shortcut("super+alt+s", move |app, _shortcut, event| {
+                        if event.state == ShortcutState::Pressed {
+                            if let Some(window) = app.get_webview_window("main") {
+                                toggle_window(&window);
+                            }
+                        }
+                    })
+            {
                 eprintln!("Failed to register global shortcut: {e}");
             }
 
@@ -72,7 +83,11 @@ pub fn run() {
                     _ => {}
                 })
                 .on_tray_icon_event(|tray, event| {
-                    if let tauri::tray::TrayIconEvent::Click { button: tauri::tray::MouseButton::Left, .. } = event {
+                    if let tauri::tray::TrayIconEvent::Click {
+                        button: tauri::tray::MouseButton::Left,
+                        ..
+                    } = event
+                    {
                         if let Some(window) = tray.app_handle().get_webview_window("main") {
                             toggle_window(&window);
                         }

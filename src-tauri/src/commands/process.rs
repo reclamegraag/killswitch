@@ -39,6 +39,11 @@ pub fn list_processes(state: State<AppState>) -> ProcessSnapshot {
         .processes()
         .iter()
         .filter_map(|(pid, process)| {
+            #[cfg(windows)]
+            if !process_cpu.contains_key(&pid.as_u32()) {
+                return None;
+            }
+
             let name = process.name().to_string_lossy().to_string();
             if name.is_empty() {
                 return None;
@@ -103,7 +108,10 @@ fn sample_process_cpu(state: &AppState, logical_cpu_count: f32) -> HashMap<u32, 
         .sampled_at
         .map(|previous| now.duration_since(previous).as_secs_f64())
         .unwrap_or_default();
-    let mut usage = HashMap::with_capacity(current.len());
+    // Keep every live PID in the map, including during the first sample. The
+    // process list uses this map to exclude exited process objects that Windows
+    // can retain temporarily while another process still owns a handle.
+    let mut usage: HashMap<u32, f32> = current.keys().map(|&pid| (pid, 0.0)).collect();
 
     if elapsed > 0.0 {
         let available_cpu_seconds = elapsed * logical_cpu_count as f64;
@@ -114,8 +122,7 @@ fn sample_process_cpu(state: &AppState, logical_cpu_count: f32) -> HashMap<u32, 
                         times.cpu_time.saturating_sub(previous.cpu_time) as f64 / 10_000_000.0;
                     usage.insert(
                         pid,
-                        (100.0 * used_cpu_seconds / available_cpu_seconds).clamp(0.0, 100.0)
-                            as f32,
+                        (100.0 * used_cpu_seconds / available_cpu_seconds).clamp(0.0, 100.0) as f32,
                     );
                 }
             }
@@ -164,7 +171,7 @@ fn query_process_cpu_times() -> Option<HashMap<u32, ProcessCpuTimes>> {
     loop {
         let process = unsafe { &*base.add(offset).cast::<SYSTEM_PROCESS_INFORMATION>() };
         let pid = process.UniqueProcessId.0 as usize as u32;
-        if pid != 0 {
+        if pid != 0 && process.NumberOfThreads != 0 {
             let created_at = u64::from_ne_bytes(process.Reserved1[24..32].try_into().ok()?);
             let user_time = u64::from_ne_bytes(process.Reserved1[32..40].try_into().ok()?);
             let kernel_time = u64::from_ne_bytes(process.Reserved1[40..48].try_into().ok()?);
@@ -249,8 +256,8 @@ fn extract_icon(exe_path: &PathBuf) -> Option<String> {
     use base64::Engine;
     use windows::core::PCWSTR;
     use windows::Win32::Graphics::Gdi::{
-        CreateCompatibleDC, CreateDIBSection, DeleteDC, DeleteObject, SelectObject, BI_RGB,
-        BITMAPINFO, BITMAPINFOHEADER, DIB_RGB_COLORS, HGDIOBJ,
+        CreateCompatibleDC, CreateDIBSection, DeleteDC, DeleteObject, SelectObject, BITMAPINFO,
+        BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS, HGDIOBJ,
     };
     use windows::Win32::UI::Shell::ExtractIconExW;
     use windows::Win32::UI::WindowsAndMessaging::{
