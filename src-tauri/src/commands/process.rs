@@ -29,8 +29,9 @@ pub(crate) struct ProcessCpuSampler {
 #[tauri::command]
 pub fn list_processes(state: State<AppState>) -> ProcessSnapshot {
     let mut sys = state.system.lock().unwrap();
-    sys.refresh_cpu_usage();
-    let logical_cpu_count = sys.cpus().len().max(1) as f32;
+    let logical_cpu_count = std::thread::available_parallelism()
+        .map(usize::from)
+        .unwrap_or(1) as f32;
     sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
     let process_cpu = sample_process_cpu(&state, logical_cpu_count);
 

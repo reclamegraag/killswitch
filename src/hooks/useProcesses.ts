@@ -56,9 +56,20 @@ export function useProcesses() {
   }, []);
 
   useEffect(() => {
-    refresh();
-    intervalRef.current = setInterval(refresh, 1000);
-    return () => clearInterval(intervalRef.current);
+    let cancelled = false;
+
+    const poll = async () => {
+      await refresh();
+      if (!cancelled) {
+        intervalRef.current = setTimeout(poll, 1000);
+      }
+    };
+
+    poll();
+    return () => {
+      cancelled = true;
+      clearTimeout(intervalRef.current);
+    };
   }, [refresh]);
 
   const killByName = useCallback(async (name: string) => {
