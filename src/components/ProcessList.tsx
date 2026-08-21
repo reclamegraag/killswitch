@@ -6,13 +6,15 @@ interface Props {
   processes: GroupedProcess[];
   killingNames: Set<string>;
   onKill: (name: string) => void;
+  onSelect: (name: string) => void;
   selectedIndex: number;
   listRef: RefObject<HTMLDivElement>;
 }
 
-export default function ProcessList({ processes, killingNames, onKill, selectedIndex, listRef }: Props) {
-  // Auto-scroll selected item into view
+export default function ProcessList({ processes, killingNames, onKill, onSelect, selectedIndex, listRef }: Props) {
+  // Auto-scroll selected item into view (skip when nothing selected)
   useEffect(() => {
+    if (selectedIndex < 0) return;
     const container = listRef.current;
     if (!container) return;
     const row = container.children[selectedIndex] as HTMLElement | undefined;
@@ -37,6 +39,7 @@ export default function ProcessList({ processes, killingNames, onKill, selectedI
           process={p}
           killing={killingNames.has(p.name)}
           onKill={onKill}
+          onSelect={onSelect}
           selected={i === selectedIndex}
         />
       ))}

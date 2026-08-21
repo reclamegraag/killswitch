@@ -20,24 +20,28 @@ export default function App() {
 
   const { sorted, field, direction, toggle } = useSort(filtered);
 
-  // Resolve selectedName to current index — falls back to 0 if process disappeared
-  const selectedIndex = selectedName !== null
-    ? Math.max(0, sorted.findIndex((p) => p.name === selectedName))
-    : 0;
+  // Resolve selectedName to current index — -1 when nothing is selected
+  const selectedIndex =
+    selectedName !== null ? sorted.findIndex((p) => p.name === selectedName) : -1;
 
-  // Keep selection valid: if selected process disappeared, select first item
+  // Clear selection if the list is empty or the selected process disappeared
   useEffect(() => {
     if (sorted.length === 0) {
       setSelectedName(null);
-    } else if (selectedName === null || !sorted.some((p) => p.name === selectedName)) {
-      setSelectedName(sorted[0].name);
+    } else if (selectedName !== null && !sorted.some((p) => p.name === selectedName)) {
+      setSelectedName(null);
     }
   }, [sorted, selectedName]);
 
   const selectByIndex = useCallback((indexFn: (current: number) => number) => {
-    const newIndex = Math.max(0, Math.min(indexFn(selectedIndex), sorted.length - 1));
+    const current = selectedIndex >= 0 ? selectedIndex : -1;
+    const newIndex = Math.max(0, Math.min(indexFn(current), sorted.length - 1));
     setSelectedName(sorted[newIndex]?.name ?? null);
   }, [selectedIndex, sorted]);
+
+  const handleSelect = useCallback((name: string) => {
+    setSelectedName((prev) => (prev === name ? null : name));
+  }, []);
 
   const handleSearch = useCallback((q: string) => {
     setSearch(q);
@@ -95,7 +99,7 @@ export default function App() {
 
       // Kill selected process
       if (e.key === "Enter" || e.key === "Delete") {
-        if (sorted[selectedIndex]) {
+        if (selectedIndex >= 0 && sorted[selectedIndex]) {
           e.preventDefault();
           killByName(sorted[selectedIndex].name);
         }
@@ -176,6 +180,7 @@ export default function App() {
           processes={sorted}
           killingNames={killingNames}
           onKill={killByName}
+          onSelect={handleSelect}
           selectedIndex={selectedIndex}
           listRef={listRef}
         />

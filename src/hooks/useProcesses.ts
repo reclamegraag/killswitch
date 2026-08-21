@@ -11,6 +11,16 @@ export interface GroupedProcess {
   icon_base64: string | null;
 }
 
+const BROWSER_MOCK: GroupedProcess[] = [
+  { name: "chrome.exe", count: 12, pids: [1], cpu_usage: 42.1, memory_mb: 812.4, icon_base64: null },
+  { name: "Code.exe", count: 8, pids: [2], cpu_usage: 18.3, memory_mb: 540.2, icon_base64: null },
+  { name: "Discord.exe", count: 3, pids: [3], cpu_usage: 6.2, memory_mb: 210.5, icon_base64: null },
+  { name: "explorer.exe", count: 1, pids: [4], cpu_usage: 1.1, memory_mb: 95.0, icon_base64: null },
+  { name: "node.exe", count: 4, pids: [5], cpu_usage: 9.8, memory_mb: 180.3, icon_base64: null },
+  { name: "Spotify.exe", count: 2, pids: [6], cpu_usage: 3.4, memory_mb: 156.7, icon_base64: null },
+  { name: "Teams.exe", count: 5, pids: [7], cpu_usage: 11.2, memory_mb: 420.1, icon_base64: null },
+];
+
 export function useProcesses() {
   const [processes, setProcesses] = useState<GroupedProcess[]>([]);
   const [killingNames, setKillingNames] = useState<Set<string>>(new Set());
@@ -45,7 +55,12 @@ export function useProcesses() {
 
       setProcesses(Array.from(map.values()));
     } catch (e) {
-      console.error("Failed to list processes:", e);
+      // Browser preview (geen Tauri): toon mock data zodat UI te testen is
+      if (import.meta.env.DEV) {
+        setProcesses(BROWSER_MOCK);
+      } else {
+        console.error("Failed to list processes:", e);
+      }
     }
   }, []);
 
@@ -60,7 +75,11 @@ export function useProcesses() {
     try {
       await invoke("kill_processes_by_name", { name });
     } catch (e) {
-      console.error("Failed to kill processes:", e);
+      if (import.meta.env.DEV) {
+        setProcesses((prev) => prev.filter((p) => p.name !== name));
+      } else {
+        console.error("Failed to kill processes:", e);
+      }
     }
     setTimeout(() => {
       setKillingNames((prev) => {

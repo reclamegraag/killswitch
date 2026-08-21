@@ -5,13 +5,15 @@ interface Props {
   process: GroupedProcess;
   killing: boolean;
   onKill: (name: string) => void;
+  onSelect: (name: string) => void;
   selected: boolean;
 }
 
-export default function ProcessRow({ process, killing, onKill, selected }: Props) {
+export default function ProcessRow({ process, killing, onKill, onSelect, selected }: Props) {
   return (
     <div
-      className={`flex items-center gap-3.5 px-5 py-2.5 transition-all group ${
+      onClick={() => onSelect(process.name)}
+      className={`flex items-center gap-3.5 px-5 py-2.5 transition-all group cursor-pointer ${
         killing ? "killing" : ""
       } ${selected ? "bg-blue-500/10" : "hover:bg-black/[0.03]"}`}
     >
@@ -51,7 +53,10 @@ export default function ProcessRow({ process, killing, onKill, selected }: Props
         position="left"
       >
         <button
-          onClick={() => onKill(process.name)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onKill(process.name);
+          }}
           className={`w-7 h-7 flex-shrink-0 flex items-center justify-center rounded-md bg-red-500/80 hover:bg-red-600 text-white transition-all cursor-pointer ${
             selected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
           }`}
