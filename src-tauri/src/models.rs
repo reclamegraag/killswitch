@@ -14,4 +14,5 @@ pub struct ProcessSnapshot {
     pub processes: Vec<ProcessInfo>,
     pub total_cpu_usage: f32,
     pub total_memory_mb: f64,
+    pub total_memory_usage: f32,
 }

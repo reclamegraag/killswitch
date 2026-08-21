@@ -15,6 +15,7 @@ export function useProcesses() {
   const [processes, setProcesses] = useState<GroupedProcess[]>([]);
   const [totalCpuUsage, setTotalCpuUsage] = useState(0);
   const [totalMemoryMb, setTotalMemoryMb] = useState(0);
+  const [totalMemoryUsage, setTotalMemoryUsage] = useState(0);
   const [killingNames, setKillingNames] = useState<Set<string>>(new Set());
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
 
@@ -48,6 +49,7 @@ export function useProcesses() {
       setProcesses(Array.from(map.values()));
       setTotalCpuUsage(snapshot.total_cpu_usage);
       setTotalMemoryMb(snapshot.total_memory_mb);
+      setTotalMemoryUsage(snapshot.total_memory_usage);
     } catch (e) {
       console.error("Failed to list processes:", e);
     }
@@ -76,5 +78,5 @@ export function useProcesses() {
     }, 250);
   }, [refresh]);
 
-  return { processes, killingNames, killByName, totalCpuUsage, totalMemoryMb };
+  return { processes, killingNames, killByName, totalCpuUsage, totalMemoryMb, totalMemoryUsage };
 }

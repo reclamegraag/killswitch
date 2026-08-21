@@ -8,7 +8,7 @@ import { useProcesses } from "./hooks/useProcesses";
 import { useSort } from "./hooks/useSort";
 
 export default function App() {
-  const { processes, killingNames, killByName, totalCpuUsage, totalMemoryMb } = useProcesses();
+  const { processes, killingNames, killByName, totalCpuUsage, totalMemoryMb, totalMemoryUsage } = useProcesses();
   const [search, setSearch] = useState("");
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const searchRef = useRef<SearchBarHandle>(null);
@@ -175,6 +175,7 @@ export default function App() {
             onToggle={toggle}
             totalCpuUsage={totalCpuUsage}
             totalMemoryMb={totalMemoryMb}
+            totalMemoryUsage={totalMemoryUsage}
           />
         </div>
 

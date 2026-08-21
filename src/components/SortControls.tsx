@@ -7,6 +7,7 @@ interface Props {
   onToggle: (field: SortField) => void;
   totalCpuUsage: number;
   totalMemoryMb: number;
+  totalMemoryUsage: number;
 }
 
 const pills: { label: string; value: SortField; keyIndex: number }[] = [
@@ -24,7 +25,11 @@ function formatCpu(usage: number): string {
   return `${usage.toFixed(1)}% CPU`;
 }
 
-export default function SortControls({ field, direction, onToggle, totalCpuUsage, totalMemoryMb }: Props) {
+function formatMemory(usage: number): string {
+  return `${usage.toFixed(1)}% Memory`;
+}
+
+export default function SortControls({ field, direction, onToggle, totalCpuUsage, totalMemoryMb, totalMemoryUsage }: Props) {
   return (
     <div className="flex items-center gap-1.5 mb-2">
       {pills.map((p) => {
@@ -51,7 +56,11 @@ export default function SortControls({ field, direction, onToggle, totalCpuUsage
         );
       })}
       <span className="ml-auto text-[11px] font-medium text-gray-500 tabular-nums">
-        {field === "cpu" ? formatCpu(totalCpuUsage) : formatGb(totalMemoryMb)}
+        {field === "cpu"
+          ? formatCpu(totalCpuUsage)
+          : field === "memory"
+            ? formatMemory(totalMemoryUsage)
+            : formatGb(totalMemoryMb)}
       </span>
     </div>
   );
