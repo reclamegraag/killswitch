@@ -5,6 +5,7 @@ interface Props {
   field: SortField;
   direction: SortDirection;
   onToggle: (field: SortField) => void;
+  selectedMemoryMb: number | null;
 }
 
 const pills: { label: string; value: SortField; keyIndex: number }[] = [
@@ -13,9 +14,14 @@ const pills: { label: string; value: SortField; keyIndex: number }[] = [
   { label: "Memory", value: "memory", keyIndex: 3 },
 ];
 
-export default function SortControls({ field, direction, onToggle }: Props) {
+function formatGb(mb: number): string {
+  const gb = mb / 1024;
+  return `${gb.toFixed(gb >= 10 ? 1 : 2)} GB`;
+}
+
+export default function SortControls({ field, direction, onToggle, selectedMemoryMb }: Props) {
   return (
-    <div className="flex gap-1.5 mb-2">
+    <div className="flex items-center gap-1.5 mb-2">
       {pills.map((p) => {
         const active = field === p.value;
         return (
@@ -39,6 +45,11 @@ export default function SortControls({ field, direction, onToggle }: Props) {
           </Tooltip>
         );
       })}
+      {selectedMemoryMb !== null && (
+        <span className="ml-auto text-[11px] font-medium text-gray-500 tabular-nums">
+          {formatGb(selectedMemoryMb)}
+        </span>
+      )}
     </div>
   );
 }

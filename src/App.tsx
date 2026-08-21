@@ -169,7 +169,12 @@ export default function App() {
 
         {/* Sort */}
         <div className="px-5 pb-2 flex-shrink-0">
-          <SortControls field={field} direction={direction} onToggle={toggle} />
+          <SortControls
+            field={field}
+            direction={direction}
+            onToggle={toggle}
+            selectedMemoryMb={selectedIndex >= 0 ? sorted[selectedIndex]?.memory_mb ?? null : null}
+          />
         </div>
 
         {/* Divider */}
