@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Mutex;
-use std::time::Instant;
 
 use sysinfo::{Pid, System};
 use tauri::State;
@@ -20,20 +19,25 @@ struct ProcessCpuTimes {
     cpu_time: u64,
 }
 
+/// System-wide CPU time counters from GetSystemTimes. `total` is kernel+user
+/// (kernel time includes idle time), i.e. elapsed wall time × logical CPUs.
+#[derive(Clone, Copy)]
+struct SystemCpuTimes {
+    idle: u64,
+    total: u64,
+}
+
 #[derive(Default)]
 pub(crate) struct ProcessCpuSampler {
     previous: HashMap<u32, ProcessCpuTimes>,
-    sampled_at: Option<Instant>,
+    previous_system: Option<SystemCpuTimes>,
 }
 
 #[tauri::command]
 pub fn list_processes(state: State<AppState>) -> ProcessSnapshot {
     let mut sys = state.system.lock().unwrap();
-    let logical_cpu_count = std::thread::available_parallelism()
-        .map(usize::from)
-        .unwrap_or(1) as f32;
     sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
-    let process_cpu = sample_process_cpu(&state, logical_cpu_count);
+    let (process_cpu, total_cpu_usage) = sample_process_cpu(&state);
 
     let processes: Vec<ProcessInfo> = sys
         .processes()
@@ -68,7 +72,6 @@ pub fn list_processes(state: State<AppState>) -> ProcessSnapshot {
         .collect();
 
     let total_memory_mb = processes.iter().map(|process| process.memory_mb).sum();
-    let total_cpu_usage = process_cpu.values().sum::<f32>().clamp(0.0, 100.0);
     let total_memory_usage = system_memory_usage(&sys);
 
     ProcessSnapshot {
@@ -96,42 +99,71 @@ fn system_memory_usage(_sys: &System) -> f32 {
     memory_usage
 }
 
+/// Samples per-process CPU usage plus the system-wide total, both computed the
+/// way Task Manager does since Windows 11 24H2: ΔCPU time / Δ(kernel+user)
+/// time from GetSystemTimes. Using the same kernel clock for numerator and
+/// denominator avoids skew against wall-clock timers, and the idle-based total
+/// also counts interrupt/DPC time and processes that exited mid-window, which
+/// a sum of per-process values would miss.
 #[cfg(windows)]
-fn sample_process_cpu(state: &AppState, logical_cpu_count: f32) -> HashMap<u32, f32> {
+fn sample_process_cpu(state: &AppState) -> (HashMap<u32, f32>, f32) {
     let current = match query_process_cpu_times() {
         Some(current) => current,
-        None => return HashMap::new(),
+        None => return (HashMap::new(), 0.0),
     };
-    let now = Instant::now();
+    let system = query_system_cpu_times();
     let mut sampler = state.process_cpu_sampler.lock().unwrap();
-    let elapsed = sampler
-        .sampled_at
-        .map(|previous| now.duration_since(previous).as_secs_f64())
-        .unwrap_or_default();
     // Keep every live PID in the map, including during the first sample. The
     // process list uses this map to exclude exited process objects that Windows
     // can retain temporarily while another process still owns a handle.
     let mut usage: HashMap<u32, f32> = current.keys().map(|&pid| (pid, 0.0)).collect();
+    let mut total_cpu_usage = 0.0f32;
 
-    if elapsed > 0.0 {
-        let available_cpu_seconds = elapsed * logical_cpu_count as f64;
-        for (&pid, times) in &current {
-            if let Some(previous) = sampler.previous.get(&pid) {
-                if previous.created_at == times.created_at {
-                    let used_cpu_seconds =
-                        times.cpu_time.saturating_sub(previous.cpu_time) as f64 / 10_000_000.0;
-                    usage.insert(
-                        pid,
-                        (100.0 * used_cpu_seconds / available_cpu_seconds).clamp(0.0, 100.0) as f32,
-                    );
+    if let (Some(system), Some(previous_system)) = (system, sampler.previous_system) {
+        let total_ticks = system.total.saturating_sub(previous_system.total);
+        if total_ticks > 0 {
+            let idle_ticks = system.idle.saturating_sub(previous_system.idle);
+            let busy_ticks = total_ticks.saturating_sub(idle_ticks);
+            total_cpu_usage =
+                (100.0 * busy_ticks as f64 / total_ticks as f64).clamp(0.0, 100.0) as f32;
+
+            for (&pid, times) in &current {
+                if let Some(previous) = sampler.previous.get(&pid) {
+                    if previous.created_at == times.created_at {
+                        let used_ticks = times.cpu_time.saturating_sub(previous.cpu_time);
+                        usage.insert(
+                            pid,
+                            (100.0 * used_ticks as f64 / total_ticks as f64).clamp(0.0, 100.0)
+                                as f32,
+                        );
+                    }
                 }
             }
         }
     }
 
     sampler.previous = current;
-    sampler.sampled_at = Some(now);
-    usage
+    if system.is_some() {
+        sampler.previous_system = system;
+    }
+    (usage, total_cpu_usage)
+}
+
+#[cfg(windows)]
+fn query_system_cpu_times() -> Option<SystemCpuTimes> {
+    use windows::Win32::Foundation::FILETIME;
+    use windows::Win32::System::Threading::GetSystemTimes;
+
+    let mut idle = FILETIME::default();
+    let mut kernel = FILETIME::default();
+    let mut user = FILETIME::default();
+    unsafe { GetSystemTimes(Some(&mut idle), Some(&mut kernel), Some(&mut user)).ok()? };
+
+    let as_ticks = |t: FILETIME| ((t.dwHighDateTime as u64) << 32) | t.dwLowDateTime as u64;
+    Some(SystemCpuTimes {
+        idle: as_ticks(idle),
+        total: as_ticks(kernel).saturating_add(as_ticks(user)),
+    })
 }
 
 #[cfg(windows)]
@@ -192,8 +224,8 @@ fn query_process_cpu_times() -> Option<HashMap<u32, ProcessCpuTimes>> {
 }
 
 #[cfg(not(windows))]
-fn sample_process_cpu(_state: &AppState, _logical_cpu_count: f32) -> HashMap<u32, f32> {
-    HashMap::new()
+fn sample_process_cpu(_state: &AppState) -> (HashMap<u32, f32>, f32) {
+    (HashMap::new(), 0.0)
 }
 
 #[cfg(not(windows))]
