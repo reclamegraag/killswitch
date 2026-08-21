@@ -8,3 +8,10 @@ pub struct ProcessInfo {
     pub memory_mb: f64,
     pub icon_base64: Option<String>,
 }
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ProcessSnapshot {
+    pub processes: Vec<ProcessInfo>,
+    pub total_cpu_usage: f32,
+    pub total_memory_mb: f64,
+}

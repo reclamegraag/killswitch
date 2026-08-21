@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { ProcessInfo } from "../types";
+import { ProcessSnapshot } from "../types";
 
 export interface GroupedProcess {
   name: string;
@@ -13,15 +13,17 @@ export interface GroupedProcess {
 
 export function useProcesses() {
   const [processes, setProcesses] = useState<GroupedProcess[]>([]);
+  const [totalCpuUsage, setTotalCpuUsage] = useState(0);
+  const [totalMemoryMb, setTotalMemoryMb] = useState(0);
   const [killingNames, setKillingNames] = useState<Set<string>>(new Set());
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
 
   const refresh = useCallback(async () => {
     try {
-      const list = await invoke<ProcessInfo[]>("list_processes");
+      const snapshot = await invoke<ProcessSnapshot>("list_processes");
 
       const map = new Map<string, GroupedProcess>();
-      for (const p of list) {
+      for (const p of snapshot.processes) {
         const existing = map.get(p.name);
         if (existing) {
           existing.count++;
@@ -44,6 +46,8 @@ export function useProcesses() {
       }
 
       setProcesses(Array.from(map.values()));
+      setTotalCpuUsage(snapshot.total_cpu_usage);
+      setTotalMemoryMb(snapshot.total_memory_mb);
     } catch (e) {
       console.error("Failed to list processes:", e);
     }
@@ -72,5 +76,5 @@ export function useProcesses() {
     }, 250);
   }, [refresh]);
 
-  return { processes, killingNames, killByName };
+  return { processes, killingNames, killByName, totalCpuUsage, totalMemoryMb };
 }

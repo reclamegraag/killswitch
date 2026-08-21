@@ -6,5 +6,11 @@ export interface ProcessInfo {
   icon_base64: string | null;
 }
 
+export interface ProcessSnapshot {
+  processes: ProcessInfo[];
+  total_cpu_usage: number;
+  total_memory_mb: number;
+}
+
 export type SortField = "name" | "cpu" | "memory";
 export type SortDirection = "asc" | "desc";

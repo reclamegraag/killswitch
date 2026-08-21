@@ -5,7 +5,7 @@ use std::sync::Mutex;
 use sysinfo::{Pid, System};
 use tauri::State;
 
-use crate::models::ProcessInfo;
+use crate::models::{ProcessInfo, ProcessSnapshot};
 
 pub struct AppState {
     pub system: Mutex<System>,
@@ -13,8 +13,11 @@ pub struct AppState {
 }
 
 #[tauri::command]
-pub fn list_processes(state: State<AppState>) -> Vec<ProcessInfo> {
+pub fn list_processes(state: State<AppState>) -> ProcessSnapshot {
     let mut sys = state.system.lock().unwrap();
+    // Global CPU is the percentage across the whole machine, matching the
+    // aggregate shown by Windows Task Manager.
+    sys.refresh_cpu_usage();
     sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
 
     let processes: Vec<ProcessInfo> = sys
@@ -44,7 +47,13 @@ pub fn list_processes(state: State<AppState>) -> Vec<ProcessInfo> {
         })
         .collect();
 
-    processes
+    let total_memory_mb = processes.iter().map(|process| process.memory_mb).sum();
+
+    ProcessSnapshot {
+        processes,
+        total_cpu_usage: sys.global_cpu_usage(),
+        total_memory_mb,
+    }
 }
 
 #[tauri::command]

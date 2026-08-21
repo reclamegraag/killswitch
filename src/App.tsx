@@ -8,7 +8,7 @@ import { useProcesses } from "./hooks/useProcesses";
 import { useSort } from "./hooks/useSort";
 
 export default function App() {
-  const { processes, killingNames, killByName } = useProcesses();
+  const { processes, killingNames, killByName, totalCpuUsage, totalMemoryMb } = useProcesses();
   const [search, setSearch] = useState("");
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const searchRef = useRef<SearchBarHandle>(null);
@@ -173,7 +173,8 @@ export default function App() {
             field={field}
             direction={direction}
             onToggle={toggle}
-            selectedMemoryMb={selectedIndex >= 0 ? sorted[selectedIndex]?.memory_mb ?? null : null}
+            totalCpuUsage={totalCpuUsage}
+            totalMemoryMb={totalMemoryMb}
           />
         </div>
 
